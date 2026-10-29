@@ -46,5 +46,5 @@ Created services/${NAME}
   template: ${TEMPLATE}
   image:    ghcr.io/${OWNER,,}/${NAME}
   port:     $(sed -nE 's/.*"port": *([0-9]+).*/\1/p' "${OUT}/service.json")
-Next: scripts/setup-service.sh ${NAME}   (GitHub environment + CapRover secrets)
+Next: scripts/setup-service.sh ${NAME} <dev|both>   (GitHub environment + CapRover secrets)
 EOF

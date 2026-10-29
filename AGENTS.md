@@ -34,6 +34,15 @@ Monorepo of services deployed to CapRover. Each service lives in `services/<name
   `<service>` for production).
 - Public services use HTTPS. Internal services (e.g. `ping-2`) use the cluster network and container port;
   enable **Do not expose as web app**, with no public domain or Port Mapping.
+- Services call each other over the cluster network at `http://srv-captain--<app-name>:<port>`, where `<port>` is
+  the callee's `service.json` port, e.g. `http://srv-captain--ping-2-dev:8000` (dev) /
+  `http://srv-captain--ping-2:8000` (production). Never call another service through its public domain.
+- The callee's URL is a runtime env var of the caller named `<CALLEE>_URL` (callee name upper-cased, `-` → `_`,
+  e.g. `PING_2_URL`), set per app in CapRover App Configs and listed in the caller's `.env.example` with a
+  `localhost` value. Code must not default it to a dev app; fail fast when it is missing.
+  react-vite frontends name it `API_URL` (nginx `/api/` upstream; `ping-web` predates this and uses `PING_API_URL`).
+- Frontends call their API same-origin: the browser requests `/api/...` on the frontend's domain and nginx
+  proxies it to the upstream above. Leave `VITE_API_BASE_URL` unset; a full URL there needs CORS on the API.
 
 ## Review guidelines
 
@@ -47,6 +56,8 @@ Monorepo of services deployed to CapRover. Each service lives in `services/<name
   - Changes to a service's `Dockerfile`, `service.json` or `.github/workflows/*` that could break build or deploy
     (wrong port, missing build arg, widened `permissions`, untrusted input interpolated into `run:`).
   - A change in one service that silently depends on another service's code instead of its API.
+  - Another service's URL hardcoded, defaulted to a dev app, or pointed at its public domain instead of
+    `srv-captain--<app-name>:<port>` via `<CALLEE>_URL`.
   - New dependencies that are unmaintained, duplicate an existing one, or are pulled in for something trivial.
 - Logs must not contain secrets or personal data.
 - Note when a PR adds an env var but not to the service's `.env.example` / README.

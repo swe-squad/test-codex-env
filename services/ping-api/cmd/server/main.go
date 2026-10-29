@@ -18,10 +18,16 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+	// No default: a missing value must not silently fall back to another environment's app
+	ping2URL := os.Getenv("PING_2_URL")
+	if ping2URL == "" {
+		slog.Error("PING_2_URL is required, e.g. http://srv-captain--ping-2-dev:8000")
+		os.Exit(1)
+	}
 
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           server.NewRouter(),
+		Handler:           server.NewRouter(ping2URL),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

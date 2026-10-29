@@ -46,15 +46,13 @@ curl --fail http://localhost:8080/api/v1/ping
 
 | App | Container port | Runtime env trong App Configs |
 | --- | --- | --- |
-| `ping-web-dev` | `80` | `PING_API_URL=http://ping-api-dev:8080` |
-| `ping-api-dev` | `8080` | `PING_2_URL=http://ping-2-dev:8000` |
+| `ping-web-dev` | `80` | `PING_API_URL=http://srv-captain--ping-api-dev:8080` |
+| `ping-api-dev` | `8080` | `PING_2_URL=http://srv-captain--ping-2-dev:8000` |
 | `ping-2-dev` | `8000` | `PORT=8000` (mặc định trong image) |
 
-Đây cũng là các upstream mặc định trong code/image; nếu app có tên khác, sửa env tương ứng.
-Theo [tài liệu CapRover](https://caprover.com/docs/database-connection.html),
-các app trong cluster gọi nhau bằng tên app và container port. Với bản CapRover
-cũ dùng hostname `srv-captain--<app-name>`, đặt env theo hostname của cluster,
-ví dụ `PING_2_URL=http://srv-captain--ping-2-dev:8000`.
+Code/image không có giá trị mặc định: thiếu `PING_API_URL` hoặc `PING_2_URL` thì container
+dừng ngay khi khởi động. Production dùng app không có `-dev`, ví dụ
+`PING_2_URL=http://srv-captain--ping-2:8000`.
 
 - Tạo app `ping-2-dev`, bật **App Token** trong Deployment.
 - Bật **Do not expose as web app** cho `ping-2-dev`, không thêm Port Mapping.

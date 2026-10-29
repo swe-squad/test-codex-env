@@ -42,7 +42,7 @@ flowchart LR
     end
     subgraph GH["GitHub"]
         GA[Actions]
-        E1[(env codex-sea-dev<br/>CAPROVER_SERVER<br/>PING_API_DEV_* / PING_WEB_DEV_*<br/>VITE_API_BASE_URL)]
+        E1[(env codex-sea-dev<br/>CAPROVER_SERVER<br/>PING_API_DEV_* / PING_WEB_DEV_*)]
     end
     GHCR[(ghcr.io/swe-squad/ping-api<br/>ghcr.io/swe-squad/ping-web)]
     subgraph CR["CapRover"]
@@ -101,6 +101,12 @@ Mở `https://captain.cr.ngochoanielts.com` → **Apps** → tạo `ping-api-dev
   - `ping-web-dev` → `80`
 
   Bấm **Save & Update**. Env vars runtime (DB, key...) cũng thêm ở đây.
+- [ ] **App Configs → Environment Variables:** URL gọi nội bộ giữa các app (HTTP, mạng nội bộ của CapRover):
+  - `ping-web-dev`: `PING_API_URL=http://srv-captain--ping-api-dev:8080`
+  - `ping-api-dev`: `PING_2_URL=http://srv-captain--ping-2-dev:8000`
+
+  Trình duyệt chỉ gọi `https://ping-web-dev.../api/...`; nginx trong ping-web chuyển tiếp nội bộ sang ping-api,
+  nên không cần CORS và ping-api có thể bật **Do not expose as web app**.
 - [ ] **Deployment:** bật **App Token** rồi copy token. Không lưu token vào file.
 
 ### C. GitHub: tạo environment và secrets
@@ -116,7 +122,6 @@ APP_NAME_DEVELOP=ping-api-dev CAPROVER_TOKEN_DEVELOP=<token ping-api-dev> \
 
 CAPROVER_SERVER=https://captain.cr.ngochoanielts.com \
 APP_NAME_DEVELOP=ping-web-dev CAPROVER_TOKEN_DEVELOP=<token ping-web-dev> \
-VITE_API_BASE_URL_DEVELOP=https://ping-api-dev.cr.ngochoanielts.com \
   scripts/setup-service.sh ping-web dev
 ```
 
@@ -134,7 +139,8 @@ VITE_API_BASE_URL_DEVELOP=https://ping-api-dev.cr.ngochoanielts.com \
    | `PING_WEB_DEV_APP_NAME` | `ping-web-dev` |
    | `PING_WEB_DEV_CAPROVER_TOKEN` | App Token của `ping-web-dev` |
 
-2. Tab **Variables** của `codex-sea-dev`: `VITE_API_BASE_URL` = `https://ping-api-dev.cr.ngochoanielts.com`.
+2. **Không** đặt `VITE_API_BASE_URL` trong tab **Variables**: để trống thì ping-web gọi `/api/` cùng origin.
+   Đặt URL của ping-api vào đây sẽ khiến trình duyệt gọi thẳng sang ping-api và bị chặn CORS ("Failed to fetch").
 
 ### D. Push code (lần đầu)
 
@@ -265,7 +271,8 @@ flowchart LR
 | CapRover báo `unauthorized`/`denied` khi pull | PAT của registry không đọc được `ghcr.io/swe-squad/*` | Làm lại mục A |
 | Deploy xanh nhưng mở web báo **502** | Container HTTP Port khác `port` trong `service.json` | Sửa trong App Configs |
 | Lỗi SSL hoặc không vào được | Chưa bấm Enable HTTPS cho app | Vào HTTP Settings của app |
-| `ping-web` gọi sai API | Biến `VITE_API_BASE_URL` của env `codex-sea-dev` sai hoặc trống | Sửa biến rồi deploy lại. Biến này nhúng vào lúc build, nên phải build lại |
+| `ping-web` báo "Failed to fetch" | `VITE_API_BASE_URL` trong `codex-sea-dev` đang có giá trị, trình duyệt gọi thẳng ping-api và bị chặn CORS | Xoá biến rồi deploy lại `ping-web` (biến nhúng lúc build) |
+| `/api/v1/ping` trả 502 | `PING_API_URL` (ping-web) hoặc `PING_2_URL` (ping-api) thiếu hoặc sai hostname | Đặt `http://srv-captain--<app>:<port>` trong App Configs, Save & Update |
 | Fail ở job `ci` | `make ci` của service fail | Chạy `make ci` trong `services/<svc>` ở local để xem lỗi |
 
 ---

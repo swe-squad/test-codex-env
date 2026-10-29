@@ -15,6 +15,9 @@ React + TypeScript SPA built with Vite, served by nginx (`nginx.conf`, SPA fallb
 - Config is baked in at build time through `VITE_*` env vars, read only in `src/config.ts`.
   New `VITE_*` vars must also be added to the `Dockerfile` ARGs, `service.json` `buildArgVars`,
   and as GitHub environment variables.
+- API calls go to `/api/...` on the same origin. nginx (`nginx.conf`) proxies them to runtime env `PING_API_URL`
+  (set in CapRover App Configs, e.g. `http://srv-captain--ping-api-dev:8080`); the container refuses to start
+  without it (`require-env.sh`). Locally Vite proxies `/api/` to `localhost:8080`. Keep `VITE_API_BASE_URL` empty.
 - Function components and hooks only; no class components.
 - Tests query by role/label (`getByRole`), not by CSS class or test id when avoidable.
 

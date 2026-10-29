@@ -3,18 +3,14 @@ package server
 import (
 	"encoding/json"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter() *gin.Engine {
-	ping2URL := os.Getenv("PING_2_URL")
-	if ping2URL == "" {
-		ping2URL = "http://ping-2-dev:8000"
-	}
+// NewRouter builds the HTTP handler; ping2URL is the base URL of ping-2 (PING_2_URL).
+func NewRouter(ping2URL string) *gin.Engine {
 	client := &http.Client{Timeout: 3 * time.Second}
 
 	r := gin.New()

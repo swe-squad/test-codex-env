@@ -14,7 +14,7 @@ func TestHealth(t *testing.T) {
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 
-	NewRouter().ServeHTTP(w, req)
+	NewRouter("http://ping-2.invalid").ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
@@ -50,11 +50,10 @@ func TestPing(t *testing.T) {
 				}
 			}))
 			defer upstream.Close()
-			t.Setenv("PING_2_URL", upstream.URL+"/")
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/ping", nil)
 
-			NewRouter().ServeHTTP(w, req)
+			NewRouter(upstream.URL+"/").ServeHTTP(w, req)
 
 			if w.Code != tc.wantStatus {
 				t.Fatalf("status = %d, want %d", w.Code, tc.wantStatus)
@@ -72,9 +71,8 @@ func TestPingUnavailable(t *testing.T) {
 	upstream.Close()
 	for _, upstreamURL := range []string{upstream.URL, ":invalid"} {
 		t.Run(upstreamURL, func(t *testing.T) {
-			t.Setenv("PING_2_URL", upstreamURL)
 			w := httptest.NewRecorder()
-			NewRouter().ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/ping", nil))
+			NewRouter(upstreamURL).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/ping", nil))
 			if w.Code != http.StatusBadGateway {
 				t.Fatalf("status = %d, want %d", w.Code, http.StatusBadGateway)
 			}
@@ -86,12 +84,11 @@ func TestPingCanceledRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	upstream := httptest.NewServer(http.NotFoundHandler())
 	defer upstream.Close()
-	t.Setenv("PING_2_URL", upstream.URL)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/ping", nil).WithContext(ctx)
-	NewRouter().ServeHTTP(w, req)
+	NewRouter(upstream.URL).ServeHTTP(w, req)
 	if w.Code != http.StatusBadGateway {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusBadGateway)
 	}
