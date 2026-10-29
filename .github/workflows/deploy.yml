@@ -1,7 +1,7 @@
 name: Deploy
 
-# Push/merge to develop -> changed services deploy to <service>-develop.
-# Push/merge to main    -> changed services deploy to <service>-production, but only services listed in
+# Push/merge to develop -> changed services deploy via environment codex-sea-dev.
+# Push/merge to main    -> changed services deploy via codex-sea-prod, but only services listed in
 #                          the repo variable PRODUCTION_SERVICES (comma separated); others are skipped.
 # Manual run: pick services (empty = all); main -> production, any other branch -> develop.
 on:

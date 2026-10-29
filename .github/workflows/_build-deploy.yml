@@ -1,7 +1,7 @@
 name: Build and Deploy (reusable)
 
 # CI -> build services/<service> -> push ghcr.io/<owner>/<service> -> deploy to CapRover.
-# CapRover secrets for every service live in the shared GitHub environment ping-api-dev / ping-api-prod:
+# CapRover secrets for every service live in the shared GitHub environment codex-sea-dev / codex-sea-prod:
 # CAPROVER_SERVER plus <SERVICE>_<ENV>_APP_NAME and <SERVICE>_<ENV>_CAPROVER_TOKEN, where SERVICE is
 # upper-cased with - -> _ and ENV is DEV or PROD, e.g. PING_API_DEV_APP_NAME. Repo-level secrets work too.
 # Callers must pass `secrets: inherit`.
@@ -38,7 +38,7 @@ jobs:
       packages: write
 
     environment:
-      name: ping-api-dev
+      name: ${{ inputs.environment == 'production' && 'codex-sea-prod' || 'codex-sea-dev' }}
 
     # One deploy at a time per service + environment, whether it came from a push or a PR comment
     concurrency:

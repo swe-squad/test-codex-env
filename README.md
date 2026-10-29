@@ -18,10 +18,10 @@ With the `new-service` skill (Claude Code `/new-service go-gin payment-api`, Cod
 ```bash
 scripts/new-service.sh go-gin payment-api        # -> services/payment-api
 
-# GitHub environment payment-api-develop + CapRover secrets
+# CapRover secrets into shared environment codex-sea-dev (use `both` + *_PRODUCTION values for prod too)
 CAPROVER_SERVER=https://captain.example.com \
 APP_NAME_DEVELOP=payment-api-dev CAPROVER_TOKEN_DEVELOP=... \
-  scripts/setup-service.sh payment-api
+  scripts/setup-service.sh payment-api dev
 
 git add services/payment-api && git commit -m "feat: add payment-api" && git push origin develop
 ```
@@ -54,18 +54,20 @@ AGENTS.md                   # repo rules + Codex review guidelines; each service
 
 | Trigger | Services | Environment | Image tags |
 |---|---|---|---|
-| Push / merge into `develop` | changed ones | `<svc>-develop` | `<sha7>`, `latest-develop` |
-| Push / merge into `main` | changed ones listed in repo variable `PRODUCTION_SERVICES` | `<svc>-production` | `<sha7>`, `latest-main` |
-| Comment `/deploy` on a PR | changed in the PR (or `/deploy svc1 svc2`) | `<svc>-develop` | `<sha7>`, `pr-<n>` |
+| Push / merge into `develop` | changed ones | develop | `<sha7>`, `latest-develop` |
+| Push / merge into `main` | changed ones listed in repo variable `PRODUCTION_SERVICES` | production | `<sha7>`, `latest-main` |
+| Comment `/deploy` on a PR | changed in the PR (or `/deploy svc1 svc2`) | develop | `<sha7>`, `pr-<n>` |
 | Actions → *Deploy* → Run workflow | input list (empty = all) | `main` → production, else develop | `<sha7>`, `latest-<branch>` |
 
-- Each environment holds `CAPROVER_SERVER`, `APP_NAME`, `CAPROVER_TOKEN` secrets; variables named in
+- All services share GitHub environments `codex-sea-dev` / `codex-sea-prod`, holding `CAPROVER_SERVER` plus
+  `<SVC>_<DEV|PROD>_APP_NAME` and `<SVC>_<DEV|PROD>_CAPROVER_TOKEN` per service; variables named in
   `buildArgVars` (e.g. `VITE_API_BASE_URL`) are passed as Docker build args.
-- Production is opt-in per service: `setup-service.sh` creates `<svc>-production` and adds the service to
-  `PRODUCTION_SERVICES` only when `APP_NAME_PRODUCTION` and `CAPROVER_TOKEN_PRODUCTION` are given.
+- Production is opt-in per service: `setup-service.sh <svc> both` writes the `_PROD_` secrets and adds the
+  service to `PRODUCTION_SERVICES`; `setup-service.sh <svc> dev` sets up develop only.
 - Every deploy runs `make ci` first; deploys of the same service + environment are queued, never parallel.
 - `/deploy` only works for owners/members/collaborators and not for PRs from forks.
-- In CapRover set *Container HTTP Port* to the service's `port`.
+- In CapRover set *Container HTTP Port* to the service's `port`. It is internal to the container (CapRover routes by
+  subdomain), so services and dev/prod apps can share the same port on one VPS; no Port Mapping needed.
 
 ## AI code review
 

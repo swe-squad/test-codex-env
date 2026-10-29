@@ -42,8 +42,7 @@ flowchart LR
     end
     subgraph GH["GitHub"]
         GA[Actions]
-        E1[(env ping-api-develop<br/>3 secrets)]
-        E2[(env ping-web-develop<br/>3 secrets + VITE_API_BASE_URL)]
+        E1[(env codex-sea-dev<br/>CAPROVER_SERVER<br/>PING_API_DEV_* / PING_WEB_DEV_*<br/>VITE_API_BASE_URL)]
     end
     GHCR[(ghcr.io/swe-squad/ping-api<br/>ghcr.io/swe-squad/ping-web)]
     subgraph CR["CapRover"]
@@ -53,18 +52,17 @@ flowchart LR
 
     REPO -- git push develop --> GA
     E1 -. secrets .-> GA
-    E2 -. secrets .-> GA
     GA -- build + push --> GHCR
     GA -- "API deploy (App Token)" --> CR
     GHCR -- pull --> A1
     GHCR -- pull --> A2
 ```
 
-- **CapRover không tự đọc GitHub.** GitHub Actions là bên gọi API của CapRover, dùng 3 secrets lưu trong GitHub environment của từng service:
-  - `CAPROVER_SERVER`: gọi vào server nào.
-  - `APP_NAME`: app nào.
-  - `CAPROVER_TOKEN`: token chứng minh có quyền deploy.
-- **Tên environment theo service:** mỗi service có environment riêng, dạng `<service>-develop`, ví dụ `ping-api-develop`. Vì vậy mỗi service trỏ được tới app riêng của nó.
+- **CapRover không tự đọc GitHub.** GitHub Actions là bên gọi API của CapRover, dùng secrets lưu trong GitHub environment:
+  - `CAPROVER_SERVER`: gọi vào server nào (dùng chung cho mọi service).
+  - `<SVC>_<DEV|PROD>_APP_NAME`: app nào, ví dụ `PING_API_DEV_APP_NAME`.
+  - `<SVC>_<DEV|PROD>_CAPROVER_TOKEN`: token chứng minh có quyền deploy, ví dụ `PING_API_DEV_CAPROVER_TOKEN`.
+- **Environment dùng chung:** mọi service dùng chung `codex-sea-dev` (develop) và `codex-sea-prod` (production). `<SVC>` là tên service viết hoa, `-` đổi thành `_`, nên mỗi service vẫn trỏ được tới app riêng của nó.
 - **CapRover pull image từ GHCR** bằng PAT đã cấu hình trong registry.
 
 ---
@@ -105,7 +103,7 @@ Mở `https://captain.cr.ngochoanielts.com` → **Apps** → tạo `ping-api-dev
   Bấm **Save & Update**. Env vars runtime (DB, key...) cũng thêm ở đây.
 - [ ] **Deployment:** bật **App Token** rồi copy token. Không lưu token vào file.
 
-### C. GitHub: tạo environment và secrets cho mỗi service
+### C. GitHub: tạo environment và secrets
 
 Chạy trong terminal của bạn, từ root của repo. Gõ token trực tiếp, đừng dán vào chat:
 
@@ -114,27 +112,29 @@ cd /home/simi/workspace/github/agentic/test-codex-env
 
 CAPROVER_SERVER=https://captain.cr.ngochoanielts.com \
 APP_NAME_DEVELOP=ping-api-dev CAPROVER_TOKEN_DEVELOP=<token ping-api-dev> \
-  scripts/setup-service.sh ping-api
+  scripts/setup-service.sh ping-api dev
 
 CAPROVER_SERVER=https://captain.cr.ngochoanielts.com \
 APP_NAME_DEVELOP=ping-web-dev CAPROVER_TOKEN_DEVELOP=<token ping-web-dev> \
 VITE_API_BASE_URL_DEVELOP=https://ping-api-dev.cr.ngochoanielts.com \
-  scripts/setup-service.sh ping-web
+  scripts/setup-service.sh ping-web dev
 ```
 
-- [ ] Script tạo environment `ping-api-develop` và `ping-web-develop` trên repo `swe-squad/test-codex-env`, và điền secrets vào đó.
+- [ ] Script tạo environment `codex-sea-dev` trên repo `swe-squad/test-codex-env` (nếu chưa có), và điền secrets của từng service vào đó.
 
 **Muốn làm tay trên web thay vì chạy script:** vào repo → **Settings → Environments → New environment**.
 
-1. Đặt tên `ping-api-develop`. Thêm 3 secrets:
+1. Đặt tên `codex-sea-dev`. Thêm secrets:
 
    | Secret | Giá trị |
    |---|---|
    | `CAPROVER_SERVER` | `https://captain.cr.ngochoanielts.com` |
-   | `APP_NAME` | `ping-api-dev` |
-   | `CAPROVER_TOKEN` | App Token của `ping-api-dev` |
+   | `PING_API_DEV_APP_NAME` | `ping-api-dev` |
+   | `PING_API_DEV_CAPROVER_TOKEN` | App Token của `ping-api-dev` |
+   | `PING_WEB_DEV_APP_NAME` | `ping-web-dev` |
+   | `PING_WEB_DEV_CAPROVER_TOKEN` | App Token của `ping-web-dev` |
 
-2. Làm tương tự cho `ping-web-develop`, thêm biến (tab **Variables**): `VITE_API_BASE_URL` = `https://ping-api-dev.cr.ngochoanielts.com`.
+2. Tab **Variables** của `codex-sea-dev`: `VITE_API_BASE_URL` = `https://ping-api-dev.cr.ngochoanielts.com`.
 
 ### D. Push code (lần đầu)
 
@@ -187,7 +187,7 @@ sequenceDiagram
     end
     GA->>GA: docker build services/ping-api
     GA->>GHCR: push ghcr.io/swe-squad/ping-api:<sha7> + :latest-develop
-    GA->>CR: deploy (secrets của env ping-api-develop)
+    GA->>CR: deploy (PING_API_DEV_* trong env codex-sea-dev)
     CR->>GHCR: pull image
     CR->>CR: start container mới, chuyển traffic, tắt container cũ
     GA-->>Dev: ✅ xanh
@@ -195,10 +195,10 @@ sequenceDiagram
 
 | Trigger | Service nào | Deploy lên | Image tags |
 |---|---|---|---|
-| Push / merge vào `develop` | Service có thay đổi | `<svc>-develop` | `<sha7>`, `latest-develop` |
-| Push / merge vào `main` | Service có thay đổi **và** có tên trong biến `PRODUCTION_SERVICES` | `<svc>-production` | `<sha7>`, `latest-main` |
-| Comment `/deploy` trên PR | Service có thay đổi trong PR | `<svc>-develop` | `<sha7>`, `pr-<số>` |
-| Comment `/deploy ping-web` | Chỉ service được ghi tên | `<svc>-develop` | `<sha7>`, `pr-<số>` |
+| Push / merge vào `develop` | Service có thay đổi | `codex-sea-dev` | `<sha7>`, `latest-develop` |
+| Push / merge vào `main` | Service có thay đổi **và** có tên trong biến `PRODUCTION_SERVICES` | `codex-sea-prod` | `<sha7>`, `latest-main` |
+| Comment `/deploy` trên PR | Service có thay đổi trong PR | `codex-sea-dev` | `<sha7>`, `pr-<số>` |
+| Comment `/deploy ping-web` | Chỉ service được ghi tên | `codex-sea-dev` | `<sha7>`, `pr-<số>` |
 | Actions → *Deploy* → Run workflow | Danh sách nhập vào (để trống = tất cả) | `main` → production, nhánh khác → develop | `<sha7>`, `latest-<branch>` |
 
 Khi nào một service được tính là "có thay đổi": có file thay đổi bên trong `services/<svc>/`. Thay đổi file ở root, như README hay docs, không deploy service nào.
@@ -213,7 +213,7 @@ Hoặc chạy tay:
 
 1. `scripts/new-service.sh python-fastapi report-api`: tạo `services/report-api/`.
 2. CapRover: tạo app `report-api-dev` (port `8000`), bật HTTPS và App Token.
-3. `CAPROVER_SERVER=... APP_NAME_DEVELOP=report-api-dev CAPROVER_TOKEN_DEVELOP=... scripts/setup-service.sh report-api`
+3. `CAPROVER_SERVER=... APP_NAME_DEVELOP=report-api-dev CAPROVER_TOKEN_DEVELOP=... scripts/setup-service.sh report-api dev`
 4. Commit, mở PR vào `develop`, rồi merge. Lần merge này deploy `report-api`.
 
 Không cần sửa workflow nào. Workflow tự nhận service mới nhờ file `service.json`.
@@ -227,10 +227,10 @@ Không cần sửa workflow nào. Workflow tự nhận service mới nhờ file 
    CAPROVER_SERVER=https://captain.cr.ngochoanielts.com \
    APP_NAME_DEVELOP=ping-api-dev    CAPROVER_TOKEN_DEVELOP=<token dev> \
    APP_NAME_PRODUCTION=ping-api     CAPROVER_TOKEN_PRODUCTION=<token prod> \
-     scripts/setup-service.sh ping-api
+     scripts/setup-service.sh ping-api both
    ```
 
-   Script tạo environment `ping-api-production` và thêm `ping-api` vào repo variable `PRODUCTION_SERVICES`.
+   Script ghi `PING_API_PROD_*` vào environment `codex-sea-prod` (tạo nếu chưa có) và thêm `ping-api` vào repo variable `PRODUCTION_SERVICES`.
 3. **GitHub:** vào Actions → *Deploy* → **Run workflow** trên `main`, ô services nhập `ping-api`, để deploy lần đầu. Từ đó trở đi, mỗi lần merge vào `main` có sửa `ping-api` là tự deploy production.
 
 Muốn tắt production cho một service thì xoá tên service khỏi `PRODUCTION_SERVICES` trong **Settings → Variables**.
@@ -261,11 +261,11 @@ flowchart LR
 | Triệu chứng | Nguyên nhân hay gặp | Cách sửa |
 |---|---|---|
 | Job `changes` ra `[]` nên không deploy gì | Push không đụng tới file nào trong `services/` | Bình thường. Muốn deploy thì vào Actions → Run workflow |
-| Fail ở *Deploy image to CapRover* (auth/token) | Environment `<svc>-develop` thiếu hoặc sai secret | Kiểm tra **Settings → Environments**, rồi **Re-run** |
+| Fail ở *Deploy image to CapRover* (auth/token) | Environment `codex-sea-dev` thiếu hoặc sai `<SVC>_DEV_*` (bước *Check CapRover secrets* in ra tên secret thiếu) | Kiểm tra **Settings → Environments**, rồi **Re-run** |
 | CapRover báo `unauthorized`/`denied` khi pull | PAT của registry không đọc được `ghcr.io/swe-squad/*` | Làm lại mục A |
 | Deploy xanh nhưng mở web báo **502** | Container HTTP Port khác `port` trong `service.json` | Sửa trong App Configs |
 | Lỗi SSL hoặc không vào được | Chưa bấm Enable HTTPS cho app | Vào HTTP Settings của app |
-| `ping-web` gọi sai API | Biến `VITE_API_BASE_URL` của env `ping-web-develop` sai hoặc trống | Sửa biến rồi deploy lại. Biến này nhúng vào lúc build, nên phải build lại |
+| `ping-web` gọi sai API | Biến `VITE_API_BASE_URL` của env `codex-sea-dev` sai hoặc trống | Sửa biến rồi deploy lại. Biến này nhúng vào lúc build, nên phải build lại |
 | Fail ở job `ci` | `make ci` của service fail | Chạy `make ci` trong `services/<svc>` ở local để xem lỗi |
 
 ---
