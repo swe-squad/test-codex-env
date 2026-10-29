@@ -1,8 +1,7 @@
 name: Deploy
 
 # Push/merge to develop -> changed services deploy via environment codex-sea-dev.
-# Push/merge to main    -> changed services deploy via codex-sea-prod, but only services listed in
-#                          the repo variable PRODUCTION_SERVICES (comma separated); others are skipped.
+# Push/merge to main    -> changed services deploy via codex-sea-prod.
 # Manual run: pick services (empty = all); main -> production, any other branch -> develop.
 on:
   push:
@@ -33,7 +32,6 @@ jobs:
           EVENT: ${{ github.event_name }}
           BEFORE: ${{ github.event.before }}
           REQUESTED: ${{ inputs.services }}
-          PRODUCTION_SERVICES: ${{ vars.PRODUCTION_SERVICES }}
         run: |
           set -euo pipefail
           all=$(.github/scripts/changed-services.sh "" "${GITHUB_SHA}")
@@ -49,7 +47,6 @@ jobs:
 
           if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
             environment=production
-            services=$(jq -c --arg p "${PRODUCTION_SERVICES}" '($p | split(",") | map(gsub("\\s"; ""))) as $prod | map(select(. as $s | $prod | index($s)))' <<<"${services}")
           else
             environment=develop
           fi

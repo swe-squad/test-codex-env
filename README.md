@@ -55,15 +55,15 @@ AGENTS.md                   # repo rules + Codex review guidelines; each service
 | Trigger | Services | Environment | Image tags |
 |---|---|---|---|
 | Push / merge into `develop` | changed ones | develop | `<sha7>`, `latest-develop` |
-| Push / merge into `main` | changed ones listed in repo variable `PRODUCTION_SERVICES` | production | `<sha7>`, `latest-main` |
+| Push / merge into `main` | changed ones | production | `<sha7>`, `latest-main` |
 | Comment `/deploy` on a PR | changed in the PR (or `/deploy svc1 svc2`) | develop | `<sha7>`, `pr-<n>` |
 | Actions → *Deploy* → Run workflow | input list (empty = all) | `main` → production, else develop | `<sha7>`, `latest-<branch>` |
 
 - All services share GitHub environments `codex-sea-dev` / `codex-sea-prod`, holding `CAPROVER_SERVER` plus
   `<SVC>_<DEV|PROD>_APP_NAME` and `<SVC>_<DEV|PROD>_CAPROVER_TOKEN` per service; variables named in
   `buildArgVars` (e.g. `VITE_API_BASE_URL`) are passed as Docker build args.
-- Production is opt-in per service: `setup-service.sh <svc> both` writes the `_PROD_` secrets and adds the
-  service to `PRODUCTION_SERVICES`; `setup-service.sh <svc> dev` sets up develop only.
+- Every service changed on `main` deploys to production, so set up its `_PROD_` secrets (`setup-service.sh <svc> both`)
+  before merging it to `main`; a missing secret fails that service's deploy job.
 - Every deploy runs `make ci` first; deploys of the same service + environment are queued, never parallel.
 - `/deploy` only works for owners/members/collaborators and not for PRs from forks.
 - In CapRover set *Container HTTP Port* to the service's `port`. It is internal to the container (CapRover routes by

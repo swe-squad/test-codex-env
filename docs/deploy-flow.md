@@ -147,7 +147,7 @@ git push -u origin main
 git checkout -b develop && git push -u origin develop
 ```
 
-- [ ] **Push `main`:** chưa deploy service nào, vì chưa có service nào trong `PRODUCTION_SERVICES`.
+- [ ] **Push `main`:** deploy mọi service lên production. Service nào chưa có secrets `_PROD_` sẽ đỏ ở bước *Check CapRover secrets*.
 - [ ] **Push `develop`:** deploy `ping-api` → `ping-api-dev` và `ping-web` → `ping-web-dev`.
 
 ### E. Kiểm tra
@@ -196,7 +196,7 @@ sequenceDiagram
 | Trigger | Service nào | Deploy lên | Image tags |
 |---|---|---|---|
 | Push / merge vào `develop` | Service có thay đổi | `codex-sea-dev` | `<sha7>`, `latest-develop` |
-| Push / merge vào `main` | Service có thay đổi **và** có tên trong biến `PRODUCTION_SERVICES` | `codex-sea-prod` | `<sha7>`, `latest-main` |
+| Push / merge vào `main` | Service có thay đổi | `codex-sea-prod` | `<sha7>`, `latest-main` |
 | Comment `/deploy` trên PR | Service có thay đổi trong PR | `codex-sea-dev` | `<sha7>`, `pr-<số>` |
 | Comment `/deploy ping-web` | Chỉ service được ghi tên | `codex-sea-dev` | `<sha7>`, `pr-<số>` |
 | Actions → *Deploy* → Run workflow | Danh sách nhập vào (để trống = tất cả) | `main` → production, nhánh khác → develop | `<sha7>`, `latest-<branch>` |
@@ -230,10 +230,10 @@ Không cần sửa workflow nào. Workflow tự nhận service mới nhờ file 
      scripts/setup-service.sh ping-api both
    ```
 
-   Script ghi `PING_API_PROD_*` vào environment `codex-sea-prod` (tạo nếu chưa có) và thêm `ping-api` vào repo variable `PRODUCTION_SERVICES`.
+   Script ghi `PING_API_PROD_*` vào environment `codex-sea-prod` (tạo nếu chưa có).
 3. **GitHub:** vào Actions → *Deploy* → **Run workflow** trên `main`, ô services nhập `ping-api`, để deploy lần đầu. Từ đó trở đi, mỗi lần merge vào `main` có sửa `ping-api` là tự deploy production.
 
-Muốn tắt production cho một service thì xoá tên service khỏi `PRODUCTION_SERVICES` trong **Settings → Variables**.
+Mọi service có thay đổi trên `main` đều deploy production, nên chuẩn bị app prod và secrets `_PROD_` trước khi merge service đó vào `main`.
 
 ## Làm việc hằng ngày
 
@@ -245,7 +245,7 @@ flowchart LR
     C -- ok --> E[Merge → deploy ping-api-dev]
     D --> E
     E --> F[PR develop → main]
-    F --> G["Merge → production (nếu có trong PRODUCTION_SERVICES)"]
+    F --> G["Merge → production"]
 ```
 
 - **PR:** chỉ service có thay đổi mới chạy CI. Trong tab Checks, job hiện tên theo service, ví dụ `ci / ping-api`.
