@@ -50,7 +50,8 @@ hay cả dev + prod?"). Do not ask about anything else up front.
    - All services share GitHub environments `codex-sea-dev` (develop) and `codex-sea-prod` (production).
      The script writes `CAPROVER_SERVER`, `<NAME>_DEV_APP_NAME`, `<NAME>_DEV_CAPROVER_TOKEN` (and the `_PROD_`
      pair for `both`), where `<NAME>` is the service name upper-cased with `-` → `_`.
-   - `both` also adds the service to repo variable `PRODUCTION_SERVICES`, so pushes to `main` deploy it.
+   - Pushes to `main` deploy every changed service to production. With `dev`, warn the user that merging the
+     service to `main` will fail its deploy job until the `_PROD_` secrets exist.
    - For every name in `service.json` `buildArgVars`, pass `<VAR>_DEVELOP` / `<VAR>_PRODUCTION`; they become
      environment variables used as Docker build args, shared by all services in that environment, so warn if
      another service already uses the same name with a different value.
@@ -92,8 +93,8 @@ hay cả dev + prod?"). Do not ask about anything else up front.
 - `_build-deploy.yml` (reusable): `_ci.yml` → build `services/<svc>` → push `ghcr.io/<owner>/<svc>:<sha7>`
   + moving tag → CapRover using `<SVC>_<DEV|PROD>_APP_NAME` / `_CAPROVER_TOKEN` from shared environment
   `codex-sea-dev` / `codex-sea-prod`. Queued per service+env.
-- `deploy.yml`: push to `develop` → changed services to develop; push to `main` → changed services
-  that are in `PRODUCTION_SERVICES` to production. Manual run takes a services list (empty = all).
+- `deploy.yml`: push to `develop` → changed services to develop; push to `main` → changed services to
+  production. Manual run takes a services list (empty = all).
 - `pr-deploy.yml`: `/deploy` or `/deploy svc1 svc2` on a PR (owner/member/collaborator, not forks) →
   PR head to develop (tag `pr-<n>`), reacts 🚀 and comments the result.
 - `prune-ghcr.yml`: weekly, per service image keeps the 10 newest versions plus whatever `latest-*` points to.

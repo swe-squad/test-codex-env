@@ -17,8 +17,8 @@ Monorepo of services deployed to CapRover. Each service lives in `services/<name
 - Work on feature branches, open PRs into `develop`. CI runs only for services changed in the PR.
 - Comment `/deploy` on a PR to deploy its changed services (or `/deploy <svc> ...`) to their develop environment.
 - Merge to `develop` deploys the changed services via shared GitHub environment `codex-sea-dev`.
-  Merge to `main` deploys changed services via `codex-sea-prod`, only for services listed in the repo
-  variable `PRODUCTION_SERVICES`; others are skipped. CapRover secrets are per service:
+  Merge to `main` deploys every changed service via `codex-sea-prod`, so a service needs its `_PROD_`
+  secrets and production CapRover app before it reaches `main`. CapRover secrets are per service:
   `<SVC>_<DEV|PROD>_APP_NAME` / `<SVC>_<DEV|PROD>_CAPROVER_TOKEN`.
 - Workflows: `ci.yml` (PR checks), `deploy.yml` (push), `pr-deploy.yml` (`/deploy`), `prune-ghcr.yml` (weekly),
   reusable `_ci.yml` and `_build-deploy.yml`.

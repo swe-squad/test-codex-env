@@ -87,4 +87,4 @@ có thể comment `/deploy ping-2 ping-api ping-web` trên PR, hoặc merge vào
 sau khi cả ba đã sẵn sàng, mở web và bấm **Ping**.
 
 Đổi riêng `ping-2` trong lần test sau sẽ chỉ chạy CI/deploy cho `ping-2`.
-Không thêm service này vào `PRODUCTION_SERVICES` vì chỉ dùng dev.
+Service này hiện chỉ dùng dev: chưa có secrets `PING_2_PROD_*`, nên merge thay đổi của nó vào `main` sẽ làm job deploy production đỏ.

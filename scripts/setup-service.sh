@@ -4,7 +4,7 @@
 #   scripts/setup-service.sh <service-name> <dev|both>
 #
 #   dev   develop only: pushes to develop and /deploy deploy it, main skips it
-#   both  develop + production: also adds the service to repo variable PRODUCTION_SERVICES
+#   both  develop + production: also writes the _PROD_ secrets, so pushes to main deploy it
 #
 # Values are read from env vars; any that are unset are skipped (set them later in Settings → Environments):
 #   CAPROVER_SERVER                         e.g. https://captain.example.com
@@ -64,13 +64,5 @@ for ENV in "${ENVS[@]}"; do
     fi
   done
 done
-
-if [[ "${TARGET}" == "both" ]]; then
-  current="$(gh variable get PRODUCTION_SERVICES --repo "${REPO}" 2>/dev/null || true)"
-  if [[ ",${current// /}," != *",${SERVICE},"* ]]; then
-    gh variable set PRODUCTION_SERVICES --repo "${REPO}" --body "${current:+${current},}${SERVICE}"
-    echo "Added ${SERVICE} to PRODUCTION_SERVICES"
-  fi
-fi
 
 echo "Done. Push to develop (or comment /deploy on a PR) to deploy ${SERVICE}."
