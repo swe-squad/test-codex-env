@@ -16,12 +16,24 @@ Monorepo of services deployed to CapRover. Each service lives in `services/<name
 
 - Work on feature branches, open PRs into `develop`. CI runs only for services changed in the PR.
 - Comment `/deploy` on a PR to deploy its changed services (or `/deploy <svc> ...`) to their develop environment.
-- Merge to `develop` deploys the changed services to `<svc>-develop`.
-  Merge to `main` deploys changed services to `<svc>-production`, only for services listed in the repo
-  variable `PRODUCTION_SERVICES`; others are skipped.
+- Merge to `develop` deploys the changed services via shared GitHub environment `codex-sea-dev`.
+  Merge to `main` deploys changed services via `codex-sea-prod`, only for services listed in the repo
+  variable `PRODUCTION_SERVICES`; others are skipped. CapRover secrets are per service:
+  `<SVC>_<DEV|PROD>_APP_NAME` / `<SVC>_<DEV|PROD>_CAPROVER_TOKEN`.
 - Workflows: `ci.yml` (PR checks), `deploy.yml` (push), `pr-deploy.yml` (`/deploy`), `prune-ghcr.yml` (weekly),
   reusable `_ci.yml` and `_build-deploy.yml`.
 - Runtime config comes from env vars set in CapRover App Configs. Never commit `.env`, `captain.json` or secrets.
+
+## CapRover host and domains
+
+- CapRover dashboard / `CAPROVER_SERVER`: `https://captain.cr.ngochoanielts.com`.
+- Service domains use `https://<app-name>.cr.ngochoanielts.com`, where `<app-name>` is the CapRover app name.
+  Dev: `<service>-dev`, e.g. `https://ping-web-dev.cr.ngochoanielts.com`.
+  Production: `<service>`, e.g. `https://ping-web.cr.ngochoanielts.com`.
+- Keep deployment secrets pointing to the corresponding CapRover app name (`<service>-dev` for dev,
+  `<service>` for production).
+- Public services use HTTPS. Internal services (e.g. `ping-2`) use the cluster network and container port;
+  enable **Do not expose as web app**, with no public domain or Port Mapping.
 
 ## Review guidelines
 

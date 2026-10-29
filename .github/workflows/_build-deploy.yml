@@ -1,8 +1,10 @@
 name: Build and Deploy (reusable)
 
 # CI -> build services/<service> -> push ghcr.io/<owner>/<service> -> deploy to CapRover.
-# CapRover secrets (CAPROVER_SERVER, APP_NAME, CAPROVER_TOKEN) live in the GitHub environment
-# `<service>-<environment>`, e.g. ping-api-develop.
+# CapRover secrets for every service live in the shared GitHub environment codex-sea-dev / codex-sea-prod:
+# CAPROVER_SERVER plus <SERVICE>_<ENV>_APP_NAME and <SERVICE>_<ENV>_CAPROVER_TOKEN, where SERVICE is
+# upper-cased with - -> _ and ENV is DEV or PROD, e.g. PING_API_DEV_APP_NAME. Repo-level secrets work too.
+# Callers must pass `secrets: inherit`.
 on:
   workflow_call:
     inputs:
@@ -36,7 +38,7 @@ jobs:
       packages: write
 
     environment:
-      name: ${{ inputs.service }}-${{ inputs.environment }}
+      name: ${{ inputs.environment == 'production' && 'codex-sea-prod' || 'codex-sea-dev' }}
 
     # One deploy at a time per service + environment, whether it came from a push or a PR comment
     concurrency:
@@ -56,6 +58,7 @@ jobs:
         env:
           SERVICE: ${{ inputs.service }}
           TAG: ${{ inputs.tag }}
+          ENVIRONMENT: ${{ inputs.environment }}
           # Repo + environment variables; service.json buildArgVars picks which ones become build args
           VARS_JSON: ${{ toJSON(vars) }}
         run: |
@@ -63,6 +66,13 @@ jobs:
           echo "IMAGE_REPO=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/${SERVICE}" >> "$GITHUB_ENV"
           echo "SHORT_SHA=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_ENV"
           echo "MOVING_TAG=${TAG//\//-}" >> "$GITHUB_ENV"
+          case "${ENVIRONMENT}" in
+            develop) env_key=DEV ;;
+            production) env_key=PROD ;;
+            *) echo "::error::Unknown environment '${ENVIRONMENT}'"; exit 1 ;;
+          esac
+          prefix="${SERVICE^^}"
+          echo "secret_prefix=${prefix//-/_}_${env_key}" >> "$GITHUB_OUTPUT"
           {
             echo "build_args<<__EOF__"
             jq -r '.buildArgVars // [] | .[]' "services/${SERVICE}/service.json" | while read -r name; do
@@ -70,6 +80,22 @@ jobs:
             done
             echo "__EOF__"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Check CapRover secrets
+        env:
+          PREFIX: ${{ steps.meta.outputs.secret_prefix }}
+          HAS_SERVER: ${{ secrets.CAPROVER_SERVER != '' }}
+          HAS_APP: ${{ secrets[format('{0}_APP_NAME', steps.meta.outputs.secret_prefix)] != '' }}
+          HAS_TOKEN: ${{ secrets[format('{0}_CAPROVER_TOKEN', steps.meta.outputs.secret_prefix)] != '' }}
+        run: |
+          missing=()
+          [[ "${HAS_SERVER}" == "true" ]] || missing+=(CAPROVER_SERVER)
+          [[ "${HAS_APP}" == "true" ]] || missing+=("${PREFIX}_APP_NAME")
+          [[ "${HAS_TOKEN}" == "true" ]] || missing+=("${PREFIX}_CAPROVER_TOKEN")
+          if (( ${#missing[@]} )); then
+            echo "::error::Missing secrets: ${missing[*]}"
+            exit 1
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -100,6 +126,6 @@ jobs:
         uses: caprover/deploy-from-github@v1.1.2
         with:
           server: ${{ secrets.CAPROVER_SERVER }}
-          app: ${{ secrets.APP_NAME }}
-          token: ${{ secrets.CAPROVER_TOKEN }}
+          app: ${{ secrets[format('{0}_APP_NAME', steps.meta.outputs.secret_prefix)] }}
+          token: ${{ secrets[format('{0}_CAPROVER_TOKEN', steps.meta.outputs.secret_prefix)] }}
           image: ${{ env.IMAGE_REPO }}:${{ env.SHORT_SHA }}
