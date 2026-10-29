@@ -70,6 +70,9 @@ environments: "Service này chỉ chạy dev, hay cả dev + prod?"). Do not ask
   services, can all use the same port on one VPS. Do not reserve port ranges and do not add **Port Mapping**.
 - For public services, connect the service domain according to root `AGENTS.md` and enable HTTPS.
   For internal services, enable **Do not expose as web app**; no public domain or Port Mapping is needed.
+- If another service calls this one, set `<NAME>_URL=http://srv-captain--<app>:<port>` in the **caller's** App
+  Configs (`<name>-dev` app for dev, `<name>` for production) and add it to the caller's `.env.example`, as in
+  root `AGENTS.md`.
 - The GHCR registry in CapRover → Cluster must be able to read `ghcr.io/<owner>/*` (PAT with `read:packages`).
 - Runtime env vars (DB URLs, etc.) go in CapRover App Configs, not in the image.
 
